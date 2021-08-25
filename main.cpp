@@ -92,10 +92,10 @@ HWND PrintProcessNameAndID(DWORD processID, int window_count) {
     return window_handle;
 }
 
-const int TRAY_ID = 1001;
-const int MY_TRAY_ICON_MESSAGE = WM_APP + 5;
-const int IDM_EXIT = 1005;
-const int IDM_EXIT_TRAY = 1006;
+#define TRAY_ID 1001
+#define MY_TRAY_ICON_MESSAGE (WM_APP + 5)
+#define IDM_EXIT 1005
+#define IDM_EXIT_TRAY 1006
 
 void ShowContextMenu(HWND hWnd) {
 
@@ -219,7 +219,7 @@ void create_system_tray(HWND window, const std::wstring &name) {
     Shell_NotifyIcon(NIM_SETVERSION, &niData); //called only when usingNIM_ADD
 }
 
-const int WM_NAMECHANGED = WM_APP + 6;
+#define WM_NAMECHANGED (WM_APP + 6)
 
 void CALLBACK WinEventProc(
         HWINEVENTHOOK hWinEventHook,
@@ -253,7 +253,7 @@ void clear_screen(char fill = ' ') {
 }
 
 int main() {
-
+    printf("These are all the windows currently open:\n");
     main_window_name = new std::wstring[100];
     {
         // Get the list of process identifiers.
