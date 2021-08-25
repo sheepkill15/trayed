@@ -3,7 +3,6 @@
 #include <psapi.h>
 #include <string>
 #include <iostream>
-#include <codecvt>
 
 HWND chosen_window;
 
@@ -142,17 +141,11 @@ LRESULT CALLBACK MyDlgProc(HWND hWnd, UINT message,
                     break;
             }
             break;
-        case WM_COMMAND:
-//            switch (LOWORD(wParam)) {
-//                case MY_MENU_MSG1:
-//
-//                    break;
-//                case MY_MENU_MSG2:
-//                    break;
-//            }
-            break;
         case WM_DESTROY:
             Shell_NotifyIcon(NIM_DELETE, &niData);
+            break;
+        default:
+            // noop
             break;
     }
     return DefWindowProc(hWnd, message, wParam, lParam);
@@ -248,6 +241,17 @@ void CALLBACK WinEventProc(
     }
 }
 
+void clear_screen(char fill = ' ') {
+    COORD tl = {0,0};
+    CONSOLE_SCREEN_BUFFER_INFO s;
+    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+    GetConsoleScreenBufferInfo(console, &s);
+    DWORD written, cells = s.dwSize.X * s.dwSize.Y;
+    FillConsoleOutputCharacter(console, fill, cells, tl, &written);
+    FillConsoleOutputAttribute(console, s.wAttributes, cells, tl, &written);
+    SetConsoleCursorPosition(console, tl);
+}
+
 int main() {
 
     main_window_name = new std::wstring[100];
@@ -282,11 +286,21 @@ int main() {
         std::cin >> chosen;
 
         create_system_tray(windows[chosen], main_window_name[chosen]);
+
+        clear_screen();
+        printf("You selected:\n%s\nWhat would you like to do?\n", main_window_name[chosen].c_str());
+        printf("%i) Create tray icon\n", 1);
+
         delete[] main_window_name;
         chosen_window = windows[chosen];
+
+        std::cin >> chosen;
+        if(chosen != 1) return 0;
     }
     HWINEVENTHOOK hook = SetWinEventHook(EVENT_OBJECT_NAMECHANGE, EVENT_OBJECT_NAMECHANGE, nullptr, WinEventProc, 0,
                                          GetWindowThreadProcessId(chosen_window, nullptr), WINEVENT_OUTOFCONTEXT);
+
+    ShowWindow(GetConsoleWindow(), SW_HIDE);
 
     MSG msg;
     while (GetMessage(&msg, nullptr, 0, 0)) {
