@@ -8,20 +8,19 @@
 
 bool stop_process = false;
 
-HWND chosen_window;
-
-void HandleDoubleClick() {
-    if (IsWindowVisible(chosen_window)) {
-        ShowWindow(chosen_window, SW_HIDE);
-    } else {
-        ShowWindow(chosen_window, SW_SHOW);
-    }
-}
-
 struct handle_data {
     DWORD process_id;
     HWND window_handle;
-};
+} chosen_window;
+
+
+void HandleDoubleClick() {
+    if (IsWindowVisible(chosen_window.window_handle)) {
+        ShowWindow(chosen_window.window_handle, SW_HIDE);
+    } else {
+        ShowWindow(chosen_window.window_handle, SW_SHOW);
+    }
+}
 
 BOOL is_main_window(HWND handle) {
     return GetWindow(handle, GW_OWNER) == (HWND) nullptr && IsWindowVisible(handle);
@@ -119,7 +118,13 @@ void ShowContextMenu(HWND hWnd) {
 
     switch (cmd) {
         case IDM_EXIT:
-            DestroyWindow(chosen_window);
+//            DestroyWindow(chosen_window);
+        {
+            const auto process = OpenProcess(PROCESS_TERMINATE, false, chosen_window.process_id);
+            TerminateProcess(process, 1);
+            CloseHandle(process);
+        }
+
         case IDM_EXIT_TRAY:
             DestroyWindow(hWnd);
             stop_process = true;
@@ -238,7 +243,7 @@ void CALLBACK WinEventProc(
     // Check this is the window we want. Titlebar name changes result in these
     // two values (obtained by looking at some titlebar changes with the
     // Accessible Event Watcher tool in the Windows SDK)
-    if (hwnd == chosen_window) {
+    if (hwnd == chosen_window.window_handle) {
         // Do minimal work here, just hand off event to mainline.
         // If you do anything here that has a message loop - eg display a dialog or
         // messagebox, you can get reentrancy.
@@ -273,13 +278,13 @@ int main() {
         cProcesses = cbNeeded / sizeof(DWORD);
 
         // Print the name and process identifier for each process.
-        HWND windows[1024];
+        handle_data windows[1024];
         int window_count = 0;
         for (i = 0; i < cProcesses; i++) {
             if (aProcesses[i] != 0) {
                 HWND handle = PrintProcessNameAndID(aProcesses[i], window_count);
                 if (handle != nullptr) {
-                    windows[window_count++] = handle;
+                    windows[window_count++] = {aProcesses[i], handle};
                 }
             }
         }
@@ -300,17 +305,16 @@ int main() {
         if(option != 1) return 0;
         chosen_window = windows[chosen];
 
-        create_system_tray(windows[chosen], main_window_name[chosen]);
+        create_system_tray(windows[chosen].window_handle, main_window_name[chosen]);
 
         delete[] main_window_name;
     }
     HWINEVENTHOOK hook = SetWinEventHook(EVENT_OBJECT_NAMECHANGE, EVENT_OBJECT_NAMECHANGE, nullptr, WinEventProc, 0,
-                                         GetWindowThreadProcessId(chosen_window, nullptr), WINEVENT_OUTOFCONTEXT);
+                                         GetWindowThreadProcessId(chosen_window.window_handle, nullptr), WINEVENT_OUTOFCONTEXT);
 
 //    if(SetHook(GetConsoleWindow(), GetWindowThreadProcessId(chosen_window, nullptr))) {
 //        std::cout << "We did it we sons of a bitch" << std::endl;
 //    }
-
 
     ShowWindow(GetConsoleWindow(), SW_HIDE);
 
@@ -318,7 +322,7 @@ int main() {
     while (!stop_process && GetMessage(&msg, nullptr, 0, 0)) {
         if (msg.message == WM_NAMECHANGED) {
             WCHAR szName[128];
-            GetWindowText(chosen_window, (LPSTR) szName, ARRAYSIZE(szName));
+            GetWindowText(chosen_window.window_handle, (LPSTR) szName, ARRAYSIZE(szName));
             lstrcpy(niData.szTip, (LPSTR) szName);
             Shell_NotifyIcon(NIM_MODIFY, &niData);
         }
