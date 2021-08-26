@@ -4,6 +4,10 @@
 #include <string>
 #include <iostream>
 
+//#include "helper.h"
+
+bool stop_process = false;
+
 HWND chosen_window;
 
 void HandleDoubleClick() {
@@ -118,6 +122,7 @@ void ShowContextMenu(HWND hWnd) {
             DestroyWindow(chosen_window);
         case IDM_EXIT_TRAY:
             DestroyWindow(hWnd);
+            stop_process = true;
             exit(0);
         default:
             // noop
@@ -285,35 +290,49 @@ int main() {
         int chosen;
         std::cin >> chosen;
 
-        create_system_tray(windows[chosen], main_window_name[chosen]);
 
-        clear_screen();
+//        clear_screen();
         printf("You selected:\n%s\nWhat would you like to do?\n", main_window_name[chosen].c_str());
         printf("%i) Create tray icon\n", 1);
 
-        delete[] main_window_name;
+        int option;
+        std::cin >> option;
+        if(option != 1) return 0;
         chosen_window = windows[chosen];
 
-        std::cin >> chosen;
-        if(chosen != 1) return 0;
+        create_system_tray(windows[chosen], main_window_name[chosen]);
+
+        delete[] main_window_name;
     }
     HWINEVENTHOOK hook = SetWinEventHook(EVENT_OBJECT_NAMECHANGE, EVENT_OBJECT_NAMECHANGE, nullptr, WinEventProc, 0,
                                          GetWindowThreadProcessId(chosen_window, nullptr), WINEVENT_OUTOFCONTEXT);
 
+//    if(SetHook(GetConsoleWindow(), GetWindowThreadProcessId(chosen_window, nullptr))) {
+//        std::cout << "We did it we sons of a bitch" << std::endl;
+//    }
+
+
     ShowWindow(GetConsoleWindow(), SW_HIDE);
 
     MSG msg;
-    while (GetMessage(&msg, nullptr, 0, 0)) {
+    while (!stop_process && GetMessage(&msg, nullptr, 0, 0)) {
         if (msg.message == WM_NAMECHANGED) {
             WCHAR szName[128];
             GetWindowText(chosen_window, (LPSTR) szName, ARRAYSIZE(szName));
             lstrcpy(niData.szTip, (LPSTR) szName);
             Shell_NotifyIcon(NIM_MODIFY, &niData);
         }
+        else if(msg.message == HCBT_DESTROYWND ) {
+            DestroyWindow(hidden_dialog);
+            break;
+        }
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
     UnhookWinEvent(hook);
+
+//    Unhook();
+
     Shell_NotifyIcon(NIM_DELETE, &niData);
 
     return 0;
