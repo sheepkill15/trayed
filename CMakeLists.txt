@@ -10,8 +10,8 @@ add_executable(trayed src/main.cpp src/win_tray.cpp src/win_tray.h)
 #add_subdirectory(helper)
 
 target_link_libraries(trayed Psapi)
+target_link_libraries(trayed -static)
 #target_link_libraries(trayed helper)
-target_include_directories(trayed PRIVATE helper)
-#target_include_directories(trayed PRIVATE ${PROJECT_BINARY_DIR}/helper)
+#target_include_directories(trayed PRIVATE helper)
 
 add_compile_options(-DPSAPI_VERSION=1)
