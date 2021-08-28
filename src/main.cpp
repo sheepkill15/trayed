@@ -112,6 +112,8 @@ int main() {
         if(option != 1) return 0;
     }
     win_tray mytray(chosen_window);
+    win_tray mytray2(chosen_window);
+    printf(mytray2.is_closed() ? "true" : "false");
 
     ShowWindow(GetConsoleWindow(), SW_HIDE);
 

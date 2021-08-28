@@ -5,6 +5,10 @@
 #include "win_tray.h"
 
 win_tray::win_tray(const handle_data& new_window) : tracked_window(new_window) {
+    if(!all_tracked_windows.emplace(new_window.window_handle).second) {
+        closed = true;
+        return;
+    }
     create_hidden_window();
     create_system_tray();
     SetProp(tracked_window.window_handle, "embedded_tray_object", this);
@@ -166,6 +170,7 @@ void win_tray::cleanup() {
     RemoveProp(tracked_window.window_handle, "embedded_tray_object");
     DestroyWindow(hidden_window);
     Shell_NotifyIcon(NIM_DELETE, &ni_data);
+    all_tracked_windows.erase(tracked_window.window_handle);
     closed = true;
 }
 

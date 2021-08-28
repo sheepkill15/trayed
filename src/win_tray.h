@@ -5,7 +5,9 @@
 #ifndef TRAYED_WIN_TRAY_H
 #define TRAYED_WIN_TRAY_H
 
+#include <set>
 #include <windows.h>
+
 #define TRAY_ID (WM_APP + 1)
 #define MY_TRAY_ICON_MESSAGE (WM_APP + 2)
 #define IDM_EXIT (WM_APP + 3)
@@ -42,6 +44,8 @@ private:
     void create_system_tray();
     void update_title();
     void cleanup();
+
+    inline static std::set<HWND> all_tracked_windows{};
 
 private:
     HWND hidden_window = {};
