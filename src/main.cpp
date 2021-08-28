@@ -1,7 +1,7 @@
 #include <windows.h>
 #include <tchar.h>
 #include <psapi.h>
-#include <string>
+#include <cstdio>
 
 #include "win_tray.h"
 
@@ -26,8 +26,6 @@ HWND find_main_window(DWORD process_id) {
     return data.window_handle;
 }
 
-std::wstring *main_window_name;
-
 HWND PrintProcessNameAndID(DWORD processID, int window_count) {
     HWND window_handle = nullptr;
 
@@ -37,6 +35,7 @@ HWND PrintProcessNameAndID(DWORD processID, int window_count) {
                                   PROCESS_VM_READ,
                                   FALSE, processID);
 
+    WCHAR name[128];
     if (nullptr != hProcess) {
         HMODULE hMod;
         DWORD cbNeeded;
@@ -47,9 +46,7 @@ HWND PrintProcessNameAndID(DWORD processID, int window_count) {
             if (handle == nullptr) {
                 goto skip;
             }
-            main_window_name[window_count].resize(GetWindowTextLength(handle) + 1, L'\0');
-            int nChar = GetWindowText(handle, reinterpret_cast<LPSTR>(&main_window_name[window_count][0]),
-                                      static_cast<int>(main_window_name[window_count].size()));
+            int nChar = GetWindowText(handle, reinterpret_cast<LPSTR>(&name[0]), 128);
             if (nChar < 1) {
                 goto skip;
             }
@@ -64,7 +61,7 @@ HWND PrintProcessNameAndID(DWORD processID, int window_count) {
     }
 
     // Print the process name and identifier.
-    _tprintf(TEXT("%i) %s  (PID: %u)\n"), window_count, main_window_name[window_count].c_str(), processID);
+    _tprintf(TEXT("%i) %s  (PID: %u)\n"), window_count, name, processID);
 
     skip:
 
@@ -76,7 +73,6 @@ HWND PrintProcessNameAndID(DWORD processID, int window_count) {
 
 int main() {
     printf("These are all the windows currently open:\n");
-    main_window_name = new std::wstring[100];
     handle_data chosen_window{};
     {
         // Get the list of process identifiers.
@@ -105,16 +101,15 @@ int main() {
         printf("Choose one (0 - %i)\n", window_count - 1);
         int chosen;
         scanf("%d", &chosen); // NOLINT(cert-err34-c)
-
-        printf("You selected:\n%s\nWhat would you like to do?\n", main_window_name[chosen].c_str());
+        chosen_window = windows[chosen];
+        WCHAR name[128];
+        GetWindowText(chosen_window.window_handle, reinterpret_cast<LPSTR>(&name[0]), 128);
+        printf("You selected:\n%s\nWhat would you like to do?\n", name);
         printf("%i) Create tray icon\n", 1);
 
         int option;
         scanf("%d", &option);
         if(option != 1) return 0;
-        chosen_window = windows[chosen];
-
-        delete[] main_window_name;
     }
     win_tray mytray(chosen_window);
 
