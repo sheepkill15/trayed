@@ -6,7 +6,7 @@ set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 find_library(PSAPI Psapi)
 
-add_executable(trayed src/main.cpp)
+add_executable(trayed src/main.cpp src/win_tray.cpp src/win_tray.h)
 #add_subdirectory(helper)
 
 target_link_libraries(trayed Psapi)

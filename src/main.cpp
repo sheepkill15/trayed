@@ -4,23 +4,10 @@
 #include <string>
 #include <iostream>
 
+#include "win_tray.h"
 //#include "helper.h"
 
 bool stop_process = false;
-
-struct handle_data {
-    DWORD process_id;
-    HWND window_handle;
-} chosen_window;
-
-
-void HandleDoubleClick() {
-    if (IsWindowVisible(chosen_window.window_handle)) {
-        ShowWindow(chosen_window.window_handle, SW_HIDE);
-    } else {
-        ShowWindow(chosen_window.window_handle, SW_SHOW);
-    }
-}
 
 BOOL is_main_window(HWND handle) {
     return GetWindow(handle, GW_OWNER) == (HWND) nullptr && IsWindowVisible(handle);
@@ -95,162 +82,6 @@ HWND PrintProcessNameAndID(DWORD processID, int window_count) {
     return window_handle;
 }
 
-#define TRAY_ID 1001
-#define MY_TRAY_ICON_MESSAGE (WM_APP + 5)
-#define IDM_EXIT 1005
-#define IDM_EXIT_TRAY 1006
-
-void ShowContextMenu(HWND hWnd) {
-
-    POINT pt;
-    GetCursorPos(&pt);
-
-    HMENU hMenu = CreatePopupMenu();
-    InsertMenu(hMenu, 0, MF_BYPOSITION | MF_STRING, IDM_EXIT, "Exit");
-    InsertMenu(hMenu, 0, MF_BYPOSITION | MF_STRING, IDM_EXIT_TRAY, "Close tray icon");
-
-    SetForegroundWindow(hWnd);
-
-    int cmd = TrackPopupMenu(hMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_BOTTOMALIGN
-                                    | TPM_NONOTIFY | TPM_RETURNCMD, pt.x, pt.y, 0, hWnd, nullptr);
-
-    PostMessage(hWnd, WM_NULL, 0, 0);
-
-    switch (cmd) {
-        case IDM_EXIT:
-//            DestroyWindow(chosen_window);
-        {
-            const auto process = OpenProcess(PROCESS_TERMINATE, false, chosen_window.process_id);
-            TerminateProcess(process, 1);
-            CloseHandle(process);
-        }
-
-        case IDM_EXIT_TRAY:
-            DestroyWindow(hWnd);
-            stop_process = true;
-            exit(0);
-        default:
-            // noop
-            break;
-    }
-}
-
-NOTIFYICONDATA niData = {};
-
-LRESULT CALLBACK MyDlgProc(HWND hWnd, UINT message,
-                           WPARAM wParam, LPARAM lParam) {
-    switch (message) {
-        case MY_TRAY_ICON_MESSAGE:
-            switch (LOWORD(lParam)) {
-                case WM_LBUTTONDBLCLK:
-                    HandleDoubleClick();
-                    break;
-                case WM_RBUTTONDOWN:
-                case WM_CONTEXTMENU:
-                    ShowContextMenu(hWnd);
-                    break;
-            }
-            break;
-        case WM_DESTROY:
-            Shell_NotifyIcon(NIM_DELETE, &niData);
-            break;
-        default:
-            // noop
-            break;
-    }
-    return DefWindowProc(hWnd, message, wParam, lParam);
-}
-
-HWND hidden_dialog;
-
-void create_system_tray(HWND window, const std::wstring &name) {
-    // zero the structure - note: Some Windows funtions
-    // require this but I can't be bothered to remember
-    // which ones do and which ones don't.
-
-
-    ZeroMemory(&niData, sizeof(NOTIFYICONDATA));
-
-    niData.cbSize = sizeof(NOTIFYICONDATA);
-
-
-    // the ID number can be any UINT you choose and will
-    // be used to identify your icon in later calls to
-    // Shell_NotifyIcon
-
-
-    niData.uID = TRAY_ID;
-
-
-    // state which structure members are valid
-    // here you can also choose the style of tooltip
-    // window if any - specifying a balloon window:
-    // NIF_INFO is a little more complicated
-
-
-    niData.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP | NIF_INFO | NIF_SHOWTIP;
-
-
-    // load the icon note: you should destroy the icon
-    // after the call to Shell_NotifyIcon
-#define GCL_HICON (-14)
-
-    niData.hIcon = (HICON) GetClassLongPtr(window, GCL_HICON);
-
-
-    // set the window you want to recieve event messages
-
-    HINSTANCE hInstance = GetModuleHandle(nullptr);
-
-    static const char *class_name = "DUMMY_CLASS";
-    WNDCLASSEX wx = {};
-    wx.cbSize = sizeof(WNDCLASSEX);
-    wx.lpfnWndProc = MyDlgProc;
-    wx.hInstance = hInstance;
-    wx.lpszClassName = class_name;
-    if (RegisterClassEx(&wx)) {
-        hidden_dialog = CreateWindowEx(0, class_name, "Helper window", 0, 0, 0, 0, 0, HWND_MESSAGE, nullptr, nullptr,
-                                       nullptr);
-    }
-
-    niData.hWnd = hidden_dialog;
-
-
-    // set the message to send
-    // note: the message value should be in the
-    // range of WM_APP through 0xBFFF
-
-
-    niData.uCallbackMessage = MY_TRAY_ICON_MESSAGE;
-
-    lstrcpy(niData.szTip, reinterpret_cast<LPCSTR>(name.c_str()));
-
-    Shell_NotifyIcon(NIM_ADD, &niData);
-    Shell_NotifyIcon(NIM_SETVERSION, &niData); //called only when usingNIM_ADD
-}
-
-#define WM_NAMECHANGED (WM_APP + 6)
-
-void CALLBACK WinEventProc(
-        HWINEVENTHOOK hWinEventHook,
-        DWORD event,
-        HWND hwnd,
-        LONG idObject,
-        LONG idChild,
-        DWORD dwEventThread,
-        DWORD dwmsEventTime
-) {
-    // Check this is the window we want. Titlebar name changes result in these
-    // two values (obtained by looking at some titlebar changes with the
-    // Accessible Event Watcher tool in the Windows SDK)
-    if (hwnd == chosen_window.window_handle) {
-        // Do minimal work here, just hand off event to mainline.
-        // If you do anything here that has a message loop - eg display a dialog or
-        // messagebox, you can get reentrancy.
-        PostThreadMessage(GetCurrentThreadId(), WM_NAMECHANGED, 0, 0);
-    }
-}
-
 void clear_screen(char fill = ' ') {
     COORD tl = {0,0};
     CONSOLE_SCREEN_BUFFER_INFO s;
@@ -265,6 +96,7 @@ void clear_screen(char fill = ' ') {
 int main() {
     printf("These are all the windows currently open:\n");
     main_window_name = new std::wstring[100];
+    handle_data chosen_window{};
     {
         // Get the list of process identifiers.
         DWORD aProcesses[1024], cbNeeded, cProcesses;
@@ -305,13 +137,9 @@ int main() {
         if(option != 1) return 0;
         chosen_window = windows[chosen];
 
-        create_system_tray(windows[chosen].window_handle, main_window_name[chosen]);
-
         delete[] main_window_name;
     }
-    HWINEVENTHOOK hook = SetWinEventHook(EVENT_OBJECT_NAMECHANGE, EVENT_OBJECT_NAMECHANGE, nullptr, WinEventProc, 0,
-                                         GetWindowThreadProcessId(chosen_window.window_handle, nullptr), WINEVENT_OUTOFCONTEXT);
-
+    win_tray mytray(chosen_window);
 //    if(SetHook(GetConsoleWindow(), GetWindowThreadProcessId(chosen_window, nullptr))) {
 //        std::cout << "We did it we sons of a bitch" << std::endl;
 //    }
@@ -319,25 +147,24 @@ int main() {
     ShowWindow(GetConsoleWindow(), SW_HIDE);
 
     MSG msg;
-    while (!stop_process && GetMessage(&msg, nullptr, 0, 0)) {
-        if (msg.message == WM_NAMECHANGED) {
-            WCHAR szName[128];
-            GetWindowText(chosen_window.window_handle, (LPSTR) szName, ARRAYSIZE(szName));
-            lstrcpy(niData.szTip, (LPSTR) szName);
-            Shell_NotifyIcon(NIM_MODIFY, &niData);
-        }
-        else if(msg.message == HCBT_DESTROYWND ) {
-            DestroyWindow(hidden_dialog);
-            break;
-        }
+    while (!mytray.is_closed()) {
+        PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE);
+//        if (msg.message == WM_NAMECHANGED) {
+//            WCHAR szName[128];
+//            GetWindowText(chosen_window.window_handle, (LPSTR) szName, ARRAYSIZE(szName));
+//            lstrcpy(niData.szTip, (LPSTR) szName);
+//            Shell_NotifyIcon(NIM_MODIFY, &niData);
+//        }
+//        else if(msg.message == HCBT_DESTROYWND ) {
+//            DestroyWindow(hidden_dialog);
+//            break;
+//        }
         TranslateMessage(&msg);
         DispatchMessage(&msg);
+        Sleep(250);
     }
-    UnhookWinEvent(hook);
 
 //    Unhook();
-
-    Shell_NotifyIcon(NIM_DELETE, &niData);
 
     return 0;
 }
