@@ -2,7 +2,6 @@
 #include <tchar.h>
 #include <psapi.h>
 #include <string>
-#include <iostream>
 
 #include "win_tray.h"
 
@@ -103,16 +102,15 @@ int main() {
             }
         }
 
-        std::cout << "Choose one (0 - " << window_count - 1 << ')' << std::endl;
-
+        printf("Choose one (0 - %i)\n", window_count - 1);
         int chosen;
-        std::cin >> chosen;
+        scanf("%d", &chosen); // NOLINT(cert-err34-c)
 
         printf("You selected:\n%s\nWhat would you like to do?\n", main_window_name[chosen].c_str());
         printf("%i) Create tray icon\n", 1);
 
         int option;
-        std::cin >> option;
+        scanf("%d", &option);
         if(option != 1) return 0;
         chosen_window = windows[chosen];
 

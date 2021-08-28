@@ -2,7 +2,6 @@
 // Created by Aron on 8/28/2021.
 //
 
-#include <functional>
 #include "win_tray.h"
 
 win_tray::win_tray(const handle_data& new_window) : tracked_window(new_window) {
