@@ -5,9 +5,6 @@
 #include <iostream>
 
 #include "win_tray.h"
-//#include "helper.h"
-
-bool stop_process = false;
 
 BOOL is_main_window(HWND handle) {
     return GetWindow(handle, GW_OWNER) == (HWND) nullptr && IsWindowVisible(handle);
@@ -41,16 +38,12 @@ HWND PrintProcessNameAndID(DWORD processID, int window_count) {
                                   PROCESS_VM_READ,
                                   FALSE, processID);
 
-    // Get the process name.
-
     if (nullptr != hProcess) {
         HMODULE hMod;
         DWORD cbNeeded;
 
         if (EnumProcessModules(hProcess, &hMod, sizeof(HMODULE),
                                &cbNeeded)) {
-//            GetModuleBaseName(hProcess, hMod, szProcessName,
-//                              sizeof(szProcessName) / sizeof(TCHAR));
             HWND handle = find_main_window(processID);
             if (handle == nullptr) {
                 goto skip;
@@ -82,17 +75,6 @@ HWND PrintProcessNameAndID(DWORD processID, int window_count) {
     return window_handle;
 }
 
-void clear_screen(char fill = ' ') {
-    COORD tl = {0,0};
-    CONSOLE_SCREEN_BUFFER_INFO s;
-    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
-    GetConsoleScreenBufferInfo(console, &s);
-    DWORD written, cells = s.dwSize.X * s.dwSize.Y;
-    FillConsoleOutputCharacter(console, fill, cells, tl, &written);
-    FillConsoleOutputAttribute(console, s.wAttributes, cells, tl, &written);
-    SetConsoleCursorPosition(console, tl);
-}
-
 int main() {
     printf("These are all the windows currently open:\n");
     main_window_name = new std::wstring[100];
@@ -121,14 +103,11 @@ int main() {
             }
         }
 
-//        printf("Choose one (0 - %i): ", window_count - 1);
         std::cout << "Choose one (0 - " << window_count - 1 << ')' << std::endl;
 
         int chosen;
         std::cin >> chosen;
 
-
-//        clear_screen();
         printf("You selected:\n%s\nWhat would you like to do?\n", main_window_name[chosen].c_str());
         printf("%i) Create tray icon\n", 1);
 
@@ -140,31 +119,16 @@ int main() {
         delete[] main_window_name;
     }
     win_tray mytray(chosen_window);
-//    if(SetHook(GetConsoleWindow(), GetWindowThreadProcessId(chosen_window, nullptr))) {
-//        std::cout << "We did it we sons of a bitch" << std::endl;
-//    }
 
     ShowWindow(GetConsoleWindow(), SW_HIDE);
 
     MSG msg;
     while (!mytray.is_closed()) {
         PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE);
-//        if (msg.message == WM_NAMECHANGED) {
-//            WCHAR szName[128];
-//            GetWindowText(chosen_window.window_handle, (LPSTR) szName, ARRAYSIZE(szName));
-//            lstrcpy(niData.szTip, (LPSTR) szName);
-//            Shell_NotifyIcon(NIM_MODIFY, &niData);
-//        }
-//        else if(msg.message == HCBT_DESTROYWND ) {
-//            DestroyWindow(hidden_dialog);
-//            break;
-//        }
         TranslateMessage(&msg);
         DispatchMessage(&msg);
         Sleep(250);
     }
-
-//    Unhook();
 
     return 0;
 }
